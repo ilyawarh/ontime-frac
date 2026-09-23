@@ -1,24 +1,5 @@
 #!/usr/bin/env bash
 #
-# ontime-frac — sample Oxford Nanopore reads by sequencing-time fraction.
-#
-# Extracts the earliest (or latest) N% of reads by st:Z start time, where N is a
-# fraction of the total read COUNT. Dorado GPU basecalling writes reads in
-# completion order, not time order, so the first N% of the file is NOT the
-# first N% by time — this tool sorts timestamps once, then filters with ontime.
-#
-#   Stage 1: seqkit extracts st:Z timestamps (fused with decompression if .gz)
-#   Stage 2: GNU sort (lexicographic == chronological for same-timezone RFC3339)
-#   Stage 3: cutoff = timestamp of the ceil(total*frac)-th read; ontime filters.
-#            Fractions >= --nested-below run in parallel from the full input;
-#            smaller fractions run as a nested cascade from the next-larger
-#            output (each pass reads less data).
-#
-# Usage:
-#   ontime-frac.sh -i reads.fq.gz -o 'sampled_{frac}.fq.gz' -f 0.1,0.25,0.5
-#   ontime-frac.sh -i reads.fq    -o 'early_{frac}.fq'      -f 10,25,50
-#   ontime-frac.sh -i reads.fq.gz -o 'late_{frac}.fq.gz'    -f 0.1 --from-end
-#
 # Options:
 #   -i PATH        input FASTQ (.fq/.fastq, optionally .gz)
 #   -o TEMPLATE    output template; '{frac}' is replaced by each fraction
@@ -36,9 +17,6 @@
 #   --force        overwrite existing outputs
 #   -j, --threads N    threads for pigz/seqkit/sort (default: nproc)
 #   -h             this help
-#
-# Dependencies: seqkit, ontime, GNU coreutils; pigz strongly recommended.
-#   conda install -c bioconda seqkit ontime pigz
 
 set -euo pipefail
 

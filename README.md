@@ -6,7 +6,7 @@ latest) N% of reads by their `st:Z` start time, where N is a fraction of the tot
 
 Built on top of [ontime](https://github.com/mbhall88/ontime) for the heavy lifting.
 
-## Why
+##Why
 
 Dorado basecalls on GPU in batches and writes reads in **completion order, not time
 order**. So the first 10% of lines in a basecalled FASTQ is a random temporal sample, not
@@ -18,9 +18,12 @@ FASTQ itself.
 
 ```bash
 conda install -c bioconda seqkit ontime pigz
-```
 
-(`pigz` is optional but strongly recommended; `gzip` is the fallback.)
+git clone git@github.com:ilyawarh/ontime-frac.git
+cd ontime-frac
+
+bash ontime-frac [options] ...
+```
 
 ## Quick start
 
@@ -76,43 +79,8 @@ stage 3   per fraction: cutoff = sorted[ceil(total × frac)]
   volume is `1 + f_k + … + f₂` instead of `k × 1`.
 - Output compression is `ontime | pigz`, ~6.5× faster than ontime's internal gzip.
 
-Measured on a 1 GB / 250k-read gzipped FASTQ (16 cores): four fractions (0.1–0.75) in
-**~30 s total**, exact counts. Extrapolates to ~30–40 min for four fractions of a
-150 GB (uncompressed) run.
-
-## Caveats
-
-- Reads must carry Dorado-style `st:Z` header tags; reads without them are excluded from
-  the cutoff math (a warning is printed).
-- Timestamps are sorted as strings — valid because Dorado emits uniform RFC3339 with the
-  same timezone offset. ontime does the final, authoritative time parsing.
-- Timestamp ties at the cutoff can yield slightly more than the target count (the boundary
-  is inclusive); the summary reports target vs actual.
-- Output preserves the input's record order — you get the correct *set* of early reads,
-  not a chronologically sorted file.
-- Peak disk usage in decompress mode with `.gz` outputs is roughly 2× the uncompressed
-  input size.
-
-## Future direction
-
-A small patch to ontime for multiple absolute cutoffs in a single pass (read once, write
-each record to all matching outputs) would remove the remaining per-fraction passes.
-Not implemented here — the bash orchestration is fast enough for occasional use.
-
 ## Citing
 
 ontime-frac wraps `ontime` — please cite it:
 
 > Hall, M. (2023). mbhall88/ontime: 0.1.3. Zenodo. https://doi.org/10.5281/zenodo.7533053
-
-## Publishing to GitHub
-
-```bash
-cd ontime-frac
-gh repo create ontime-frac --public --source=. --push
-# or: git remote add origin git@github.com:<you>/ontime-frac.git && git push -u origin main
-```
-
-## License
-
-MIT (same as ontime).
