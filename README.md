@@ -6,14 +6,6 @@ latest) N% of reads by their `st:Z` start time, where N is a fraction of the tot
 
 Built on top of [ontime](https://github.com/mbhall88/ontime) for the heavy lifting.
 
-## Why
-
-Dorado basecalls on GPU in batches and writes reads in **completion order, not time
-order**. So the first 10% of lines in a basecalled FASTQ is a random temporal sample, not
-the first 10% of sequencing. To get "the reads sequenced in the first 10% of the run by
-count", you must rank by `st:Z` — that is what this tool does, without ever sorting the
-FASTQ itself.
-
 ## Install
 
 ```bash
@@ -31,12 +23,11 @@ bash ontime-frac [options] ...
 # earliest 10%, 25% and 50% by sequencing time, in one run
 ontime-frac.sh -i reads.fq.gz -o 'sampled_{frac}.fq.gz' -f 0.1,0.25,0.5
 
-# percents work too; latest fraction instead of earliest
-ontime-frac.sh -i reads.fq.gz -o 'late_{frac}.fq.gz' -f 10 --from-end
+# fractions in percents and suffix auto completion, use 16 threads
+ontime-frac.sh -i reads.fq -o 'subsample' -f 10,25,50 -j 16
 
-# serial experiments: the second run reuses the cached timestamps and
-# decompressed copy, going straight to filtering
-ontime-frac.sh -i reads.fq.gz -o 's_{frac}.fq.gz' -f 0.02,0.05
+# direct mode (without decompression) with nested subsets below 0.2
+ontime-frac.sh -i reads.fq.gz -o 'sampled_{frac}.fq.gz' -f 0.1,0.25,0.5 --mode direct --nested-below 0.2
 ```
 
 Outputs are **cumulative nested subsets**: the 10% output is contained in the 25% output,
@@ -45,27 +36,33 @@ of the ceil(total × frac)-th read and ontime keeps everything up to it.
 
 ## Options
 
-| Option | Default | Meaning |
-|---|---|---|
-| `-i` | — | input FASTQ (`.fq`/`.fastq`, optionally `.gz`) |
-| `-o` | — | output template; `{frac}` is replaced by each fraction |
-| `-f` | — | comma-separated fractions (0-1, or 0-100 as percent) |
-| `--from-end` | off | sample the latest fraction(s) instead of the earliest |
-| `--mode` | `auto` | `auto` / `decompress` / `direct` (see below) |
-| `--nested-below` | `0.5` | fractions below this use the nested cascade; at/above run in parallel. `0` = all parallel, `1` = all nested |
-| `--workdir` | input's dir | where intermediates (decompressed copy, timestamp cache) live |
-| `--no-keep` | off | delete the timestamp cache after the run |
-| `--force` | off | overwrite existing outputs |
-| `-j`, `--threads` | `nproc` | threads for pigz / seqkit / sort |
+```
+-i PATH              input FASTQ (.fq/.fastq, optionally .gz)
+-o TEMPLATE          output template; '{frac}' is replaced by each fraction
+                         (without '{frac}', '_<frac>' is inserted before the extension)
+-f LIST              comma-separated fractions (0-1, or 0-100 if given as percent)
+--from-end           sample the LATEST fraction(s) instead of earliest
+--mode M             auto (default) | decompress | direct
+                         decompress: gunzip once to plain FASTQ, all passes read plain
+                         (ontime is ~15x faster on plain input); direct: read .gz as-is
+--nested-below B     fractions < B use the nested cascade, >= B run in
+                         parallel from the full input (default 0.5; 0 = all parallel,
+                         1 = all nested)
+--workdir DIR        directory for intermediates (default: input's directory)
+--no-keep            delete the sorted-timestamp cache after the run
+--force              overwrite existing outputs
+-j, --threads N      threads for pigz/seqkit/sort (default: nproc)
+-h                   this help
+```
 
 ## How it works
 
-```
-stage 1   pigz -dc in.gz | tee plain.fq | seqkit seq -n - | sed  →  timestamps
-stage 2   GNU sort  →  timestamps.sorted.txt   (cached and reused across runs)
-stage 3   per fraction: cutoff = sorted[ceil(total × frac)]
-          ontime --to <cutoff>  does the actual filtering
-```
+- Stage 1: seqkit extracts st:Z timestamps (fused with decompression if .gz)
+- Stage 2: GNU sort (lexicographic == chronological for same-timezone RFC3339)
+- Stage 3: cutoff = timestamp of the ceil(total*frac)-th read; ontime filters.
+            Fractions >= --nested-below run in parallel from the full input;
+            smaller fractions run as a nested cascade from the next-larger
+            output (each pass reads less data).
 
 - **Decompress mode** (auto-chosen for `.gz` when disk allows): ontime reads plain text at
   ~1030 MB/s vs ~67 MB/s through its own single-threaded gunzipper, so the file is

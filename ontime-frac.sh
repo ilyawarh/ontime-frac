@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 #
+# Usage:
+#   ontime-frac.sh -i reads.fq.gz -o 'sampled_{frac}.fq.gz' -f 0.1,0.25,0.5
+#   ontime-frac.sh -i reads.fq    -o 'early_{frac}.fq'      -f 10,25,50
+#   ontime-frac.sh -i reads.fq.gz -o 'late_{frac}.fq.gz'    -f 0.1 --from-end
+#
 # Options:
 #   -i PATH        input FASTQ (.fq/.fastq, optionally .gz)
 #   -o TEMPLATE    output template; '{frac}' is replaced by each fraction
@@ -28,7 +33,7 @@ NESTED_BELOW="0.5"
 
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; }
 die() { log "ERROR: $*"; exit 1; }
-usage() { sed -n '2,47p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
