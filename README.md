@@ -6,7 +6,7 @@ latest) N% of reads by their `st:Z` start time, where N is a fraction of the tot
 
 Built on top of [ontime](https://github.com/mbhall88/ontime) for the heavy lifting.
 
-##Why
+## Why
 
 Dorado basecalls on GPU in batches and writes reads in **completion order, not time
 order**. So the first 10% of lines in a basecalled FASTQ is a random temporal sample, not

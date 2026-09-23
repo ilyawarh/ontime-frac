@@ -1,7 +1,0 @@
-# ontime-frac intermediates
-*.timestamps.sorted.txt
-*.timestamps.raw.txt
-*.ontime-frac_decompressed.fq
-.ontime-frac_*.log
-.ontime-frac_bridge_*.fq
-.ontime-frac_nest_*.fq
